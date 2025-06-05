@@ -1,0 +1,6 @@
+.venv
+backups
+firmwares/
+firmwares
+test/
+test
