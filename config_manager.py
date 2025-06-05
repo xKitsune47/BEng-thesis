@@ -1,5 +1,5 @@
 async def load_config(filename='config.txt'):
-    """Ładuje konfigurację z pliku"""
+    # load config from file
     try:
         with open(filename, 'r') as file:
             config = {}
@@ -8,9 +8,9 @@ async def load_config(filename='config.txt'):
                 config[key] = value
             return config
     except:
-        return {'ssid': '', 'passwd': ''}
+        return {'ssid': '', 'passwd': '', 'city': ''}
 
-async def save_config(ssid, password, filename='config.txt'):
-    """Zapisuje konfigurację do pliku"""
+async def save_config(ssid, password, city, filename='config.txt'):
+    # save config to file
     with open(filename, 'w') as file:
-        file.write(f"ssid={ssid}\npasswd={password}")
+        file.write(f"ssid={ssid}\npasswd={password}\ncity={city}")

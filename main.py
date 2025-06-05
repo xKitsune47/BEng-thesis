@@ -1,6 +1,8 @@
 import uasyncio as asyncio
 import time
-from machine import Pin  # Add this import
+from machine import Pin 
+
+# import custom written functions
 from display import display_text
 from wifi_manager import connect_wifi
 from sensor import read_dht, read_mq7
@@ -15,19 +17,20 @@ ip = None
 timezone = None
 RESET_BUTTON_PIN = 2
 RESET_HOLD_TIME = 5
+month_arr = ["sty", "lut", "mar", "kwi", "maj", "cze", "lip", "sie", "wrz", "paź", "lis", "gru"]
 
 async def check_reset_button():
-    """Check if reset button is held during boot"""
+    """check if reset button is held during boot"""
     try:
         # Initialize button with pull-up
         reset_btn = Pin(RESET_BUTTON_PIN, Pin.IN, Pin.PULL_UP)
         
-        # Initial check if button is pressed during boot
+        # check if button is pressed during boot
         if not reset_btn.value():
             print("Button pressed at boot")
             start = time.time()
             
-            # Simple countdown while button is held
+            # countdown while button is pressed
             while not reset_btn.value():
                 elapsed = time.time() - start
                 remaining = RESET_HOLD_TIME - elapsed
@@ -58,10 +61,14 @@ async def read_and_display():
         temp, hum = read_dht()
         co_ppm = read_mq7()
         cur_time = time.localtime()
-        formatted_time = f"{cur_time[3]:02}:{cur_time[4]:02}"
+        print(cur_time)
+        formatted_time = f"{cur_time[2]} {month_arr[cur_time[1]-1]}, {cur_time[3]:02}:{cur_time[4]:02}"
 
         # display lines array
         display_lines = []
+
+        # display date and time
+        display_lines.append(f"{formatted_time}")
 
         # display temperature and humidity
         if temp is not None and hum is not None:
@@ -78,7 +85,6 @@ async def read_and_display():
         else:
             display_lines.append("❌ Blad MQ7")
 
-        display_lines.append(f"Czas: {formatted_time}")
         display_text(display_lines)
         await asyncio.sleep(5)
 
@@ -97,9 +103,9 @@ async def locate_time():
         await asyncio.sleep(10)
 
 # main ¯\_(ツ)_/¯
-async def handle_web_server_data(ssid, password):
+async def handle_web_server_data(ssid, password, city):
     # handle data received from the web server
-    await save_config(ssid, password)
+    await save_config(ssid, password, city)
     return True
 
 async def main():
@@ -136,5 +142,6 @@ if __name__ == "__main__":
     asyncio.run(main())
 
 """
-dodac obsluge TEMT6000 które mierzy natężenie światła i dostosowuje jasność wyświetlacza
+- dodac obsluge ze jesli podane miasto w configu to pobiera dane z api openweatherapi, dodac funkcjonalnosc w mainie i w weather_forecast.py
+- dodac obsluge TEMT6000 które mierzy natężenie światła i dostosowuje jasność wyświetlacza
 """

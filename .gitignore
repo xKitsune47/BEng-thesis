@@ -4,3 +4,6 @@ firmwares/
 firmwares
 test/
 test
+
+.gitignore
+.env

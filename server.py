@@ -6,9 +6,9 @@ import utime
 import os
 import asyncio
 
-# Access Point configuration
+# AP config
 AP_SSID = 'ESP32-C3-AP'
-AP_PASSWORD = '12345678'  # At least 8 characters
+AP_PASSWORD = '12345678'  
 AP_AUTHMODE = network.AUTH_WPA_WPA2_PSK
 
 # HTML content
@@ -27,12 +27,17 @@ html = '''
             </div>
             <form method="POST">
                 <div class="form-group">
-                    <label for="field1">WiFi SSID:</label>
-                    <input type="text" id="field1" name="field1" required>
+                    <label for="ssid">WiFi SSID:</label>
+                    <input type="text" id="ssid" name="ssid" required>
                 </div>
                 <div class="form-group">
-                    <label for="field2">WiFi password:</label>
-                    <input type="text" id="field2" name="field2" required>
+                    <label for="passwd">WiFi password:</label>
+                    <input type="text" id="passwd" name="passwd" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="city">City (optional):</label>
+                    <input type="text" id="city" name="city">
                 </div>
                 <button type="submit">Submit</button>
             </form>
@@ -42,7 +47,7 @@ html = '''
 '''
 
 def setup_ap():
-    """Setup ESP32-C3 as an Access Point"""
+    """set up ESP32-C3 as AP"""
     ap = network.WLAN(network.AP_IF)
     ap.active(True)
     ap.config(essid=AP_SSID, password=AP_PASSWORD, authmode=AP_AUTHMODE)
@@ -55,10 +60,9 @@ def setup_ap():
     print('SSID:', AP_SSID)
     print('Password:', AP_PASSWORD)
     print('Network Config:', ap.ifconfig())
-    return ap.ifconfig()[0]  # Return IP address
+    return ap.ifconfig()[0]  # return ip for connecting
 
 def parse_form_data(request_data):
-    """Parse form data from POST request"""
     try:
         form_data_str = request_data.split('\r\n\r\n')[1]
         fields = form_data_str.split('&')
@@ -72,13 +76,12 @@ def parse_form_data(request_data):
         return None
 
 async def web_server(callback=None):
-    """Asynchronous web server function"""
     ip = setup_ap()
     
     s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     s.bind(('', 80))
     s.listen(5)
-    s.setblocking(False)  # Make socket non-blocking
+    s.setblocking(False)
     
     print(f'Web server started at http://{ip}')
     
@@ -98,17 +101,19 @@ async def web_server(callback=None):
                 continue
             
             if request.startswith('POST'):
-                # Handle form submission
+                # handle form submission
                 form_data = parse_form_data(request)
                 if form_data:
                     print('Received form data:')
-                    ssid = form_data.get('field1', '')
-                    password = form_data.get('field2', '')
+                    ssid = form_data.get('ssid', '')
+                    password = form_data.get('passwd', '')
+                    city = form_data.get('city', '')
                     print('SSID:', ssid)
                     print('Password:', password)
+                    print('City:', city)
 
                     if callback:
-                        await callback(ssid, password)
+                        await callback(ssid, password, city)
                     
                     response = 'HTTP/1.1 200 OK\r\nContent-Type: text/html\r\n\r\n'
                     response += '<html><body>'
