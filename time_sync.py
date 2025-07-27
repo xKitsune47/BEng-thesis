@@ -1,17 +1,6 @@
-import ntptime
 import machine
 import urequests
 import time
-
-def sync_ntp():
-    return False
-    try:
-        print("⏳ Pobieranie czasu z NTP...")
-        ntptime.settime()
-        return True
-    except Exception as e:
-        print(f"❌ Błąd synchronizacji NTP: {e}")
-        return False
 
 def sync_api(timezone):
     try:
