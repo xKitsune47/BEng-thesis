@@ -8,8 +8,9 @@ from wifi_manager import connect_wifi
 from sensor import read_dht, read_mq7
 from location_service import get_public_ip, get_timezone
 from config_manager import load_config, save_config
-from time_sync import sync_ntp, sync_api
+from time_sync import sync_api
 from server import web_server
+from weather_forecast import weather_today
 
 # global variables
 found_time = False
@@ -18,11 +19,12 @@ timezone = None
 RESET_BUTTON_PIN = 2
 RESET_HOLD_TIME = 5
 month_arr = ["sty", "lut", "mar", "kwi", "maj", "cze", "lip", "sie", "wrz", "paź", "lis", "gru"]
+config = None
 
 async def check_reset_button():
-    """check if reset button is held during boot"""
+    # check if reset button is held during boot
     try:
-        # Initialize button with pull-up
+        # initialize button with pullup pin
         reset_btn = Pin(RESET_BUTTON_PIN, Pin.IN, Pin.PULL_UP)
         
         # check if button is pressed during boot
@@ -55,14 +57,36 @@ async def check_reset_button():
 
 # function to read data and display on the screen
 async def read_and_display():
-    global found_time
-    
+    global config
+    accumulated_time_cur = 0
+    accumulated_time_long = 0
+    first_weather_fetch = True
+    weather = None
+    cur_weather = None
+
     while True:
         temp, hum = read_dht()
         co_ppm = read_mq7()
         cur_time = time.localtime()
-        print(cur_time)
+        cur_city = config.get('city', '')
         formatted_time = f"{cur_time[2]} {month_arr[cur_time[1]-1]}, {cur_time[3]:02}:{cur_time[4]:02}"
+        
+        if cur_city != '':
+            if accumulated_time_cur >= 1800 or first_weather_fetch:
+                print(f"Fetching weather for {cur_city}")
+                
+                if accumulated_time_long >= 10800 or first_weather_fetch:
+                    weather = await weather_today(cur_city, True)
+                    cur_weather = weather
+                    accumulated_time_long = 0
+                    print("Fetched long-term weather")
+                else: 
+                    cur_weather = await weather_today(cur_city, False)
+                    print("Fetched current weather")
+                
+                first_weather_fetch = False
+                accumulated_time_cur = 0
+
 
         # display lines array
         display_lines = []
@@ -85,7 +109,16 @@ async def read_and_display():
         else:
             display_lines.append("❌ Blad MQ7")
 
+        # display current, mix and max temp
+        if cur_weather is not None:
+            display_lines.append(f"Teraz: {round(cur_weather['curtemp'], 1)}C")
+
+            if weather is not None:
+                display_lines.append(f"{round(weather['mintemp'], 1)}C/{round(weather['maxtemp'], 1)}C")
+
         display_text(display_lines)
+        accumulated_time_cur +=5
+        accumulated_time_long +=5
         await asyncio.sleep(5)
 
 async def locate_time():
@@ -102,14 +135,14 @@ async def locate_time():
                 return True
         await asyncio.sleep(10)
 
-# main ¯\_(ツ)_/¯
 async def handle_web_server_data(ssid, password, city):
     # handle data received from the web server
     await save_config(ssid, password, city)
     return True
 
+# main ¯\_(ツ)_/¯
 async def main():
-    global timezone
+    global timezone, config
     # RESET CONFIG.TXT FILE
     await check_reset_button()
 
@@ -131,17 +164,11 @@ async def main():
         import machine
         machine.reset()
     else:
-        # connect to WiFi with SSID and passwd in the config.txt file
-        print(f"timezone! {timezone}")
+        # connect to WiFi with SSID and passwd saved in config.txt file
         if await connect_wifi(ssid, password):
             if await locate_time():
-                sync_ntp() or sync_api(timezone)
+                sync_api(timezone)
             await read_and_display()
 
 if __name__ == "__main__":
     asyncio.run(main())
-
-"""
-- dodac obsluge ze jesli podane miasto w configu to pobiera dane z api openweatherapi, dodac funkcjonalnosc w mainie i w weather_forecast.py
-- dodac obsluge TEMT6000 które mierzy natężenie światła i dostosowuje jasność wyświetlacza
-"""
